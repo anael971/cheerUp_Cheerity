@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tombola – Roulette Casino</title>
+  <style>
+    :root{
+      --bg:#0b0f1a; --card:#121a2b; --text:#eaf0ff; --muted:#9fb0d0;
+      --accent:#7c5cff; --good:#42d392; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% 20%, #172145, var(--bg));
+      color:var(--text);
+      height:100vh; overflow:hidden;
+    }
+
+    .topbar{
+      position:fixed; top:0; left:0; right:0;
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      padding:12px 16px;
+      background: rgba(5,8,16,.55);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+      z-index:50;
+    }
+    .topbar .left, .topbar .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .btn{
+      appearance:none; border:0; cursor:pointer;
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:700;
+      transition: transform .08s ease, background .2s ease, opacity .2s ease;
+    }
+    .btn:hover{background: rgba(255,255,255,.12)}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{background: linear-gradient(135deg, var(--accent), #38bdf8);}
+    .btn.good{background: linear-gradient(135deg, var(--good), #22c55e);}
+    .btn.danger{background: rgba(239,68,68,.18);}
+    .btn:disabled{opacity:.45; cursor:not-allowed}
+    .pill{
+      font-size:13px; color:var(--muted);
+      padding:8px 10px; border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+      font-weight:600;
+    }
+
+    main{height:100vh; display:flex; align-items:center; justify-content:center; padding:72px 18px 18px;}
+    .screen{
+      width:min(1200px, 96vw);
+      height:min(680px, 80vh);
+      border-radius:24px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 30px 90px rgba(0,0,0,.45);
+      overflow:hidden;
+      position:relative;
+    }
+
+    /* Views */
+    .view{position:absolute; inset:0; display:none; padding:36px;}
+    .view.active{display:flex;}
+
+    /* LOT & WINNER share same layout */
+    .hero{
+      width:100%;
+      display:flex;
+      gap:28px;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+    }
+    .photo{
+      width:min(520px, 44vw);
+      height:min(520px, 60vh);
+      border-radius:26px;
+      overflow:hidden;
+      background: rgba(18,26,43,.7);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .photo img{
+      width:100%; height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .photo .fallback{
+      color:var(--muted);
+      font-weight:800;
+      font-size:22px;
+      padding:18px;
+      text-align:center;
+    }
+
+    .heroText{
+      width:min(520px, 44vw);
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-weight:900;
+      letter-spacing:.02em;
+      color:rgba(234,240,255,.92);
+      opacity:.95;
+    }
+    .kicker .num{
+      width:44px; height:44px;
+      border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      background: rgba(124,92,255,.18);
+      border:1px solid rgba(124,92,255,.35);
+      font-size:20px;
+    }
+    .title{
+      font-size:54px;
+      font-weight:950;
+      letter-spacing:-0.02em;
+      margin:0;
+      line-height:1.03;
+    }
+    .winnerName{
+      font-size:56px;
+      font-weight:950;
+      letter-spacing:-0.02em;
+      margin:0;
+      line-height:1.03;
+      color: #d9ffe9;
+      text-shadow: 0 12px 40px rgba(0,0,0,.45);
+    }
+
+    /* DRAW view */
+    .drawWrap{
+      width:100%;
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .drawHeader{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding:14px 18px;
+      background: rgba(18,26,43,.55);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+    }
+    .drawHeader h2{margin:0; font-size:26px; font-weight:900;}
+    .drawHeader .meta{color:var(--muted); font-size:13px; font-weight:650;}
+
+    .stage{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+    .rouletteFrame{
+      width:min(820px, 92vw);
+      height:310px;
+      border-radius:26px;
+      background: rgba(18,26,43,.70);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.20);
+      position:relative;
+      overflow:hidden;
+    }
+    .highlight{
+      position:absolute; left:18px; right:18px;
+      top:50%; transform:translateY(-50%);
+      height:82px;
+      border-radius:18px;
+      background: rgba(124,92,255,.14);
+      border:1px solid rgba(124,92,255,.35);
+      box-shadow: 0 0 0 2px rgba(124,92,255,.10), 0 18px 40px rgba(0,0,0,.35);
+      pointer-events:none;
+    }
+    .pointer{
+      position:absolute;
+      right:22px;
+      top:50%;
+      transform: translateY(-50%);
+      width:0; height:0;
+      border-top:14px solid transparent;
+      border-bottom:14px solid transparent;
+      border-left:18px solid rgba(255,255,255,.85);
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+      pointer-events:none;
+    }
+    ul#list{
+      list-style:none; padding:0; margin:0;
+      position:absolute; left:0; right:0; top:0;
+      transform: translateY(0px);
+      will-change: transform;
+    }
+    .item{
+      height:82px;
+      display:flex; align-items:center;
+      padding:0 28px;
+      font-size:36px;
+      font-weight:900;
+      letter-spacing:-0.01em;
+      border-bottom:1px solid rgba(255,255,255,.05);
+    }
+
+    /* Modal import */
+    .modal{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center; justify-content:center;
+      z-index:100;
+      padding:18px;
+    }
+    .modal.show{display:flex;}
+    .modalCard{
+      width:min(760px, 96vw);
+      border-radius:18px;
+      background: rgba(18,26,43,.92);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: 0 20px 80px rgba(0,0,0,.55);
+      padding:16px;
+    }
+    textarea{
+      width:100%;
+      height:220px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:12px;
+      font-size:14px;
+      outline:none;
+      resize:vertical;
+    }
+    .modalRow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:10px;}
+    .muted{color:var(--muted); font-size:13px; font-weight:650;}
+    input[type="file"]{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="left">
+      <button class="btn" id="btnSetup">Importer / Coller les noms</button>
+      <span class="pill" id="countPill">0 participant(s)</span>
+      <span class="pill" id="roundPill">Lot 1 / 2</span>
+    </div>
+    <div class="right">
+      <button class="btn primary" id="btnStart">Lancer le tirage</button>
+      <button class="btn good" id="btnNext" disabled>Prochain lot</button>
+      <button class="btn danger" id="btnReset">Reset</button>
+    </div>
+  </div>
+
+  <main>
+    <section class="screen">
+
+      <!-- VIEW 1: LOT -->
+      <div class="view active" id="viewLot">
+        <div class="hero">
+          <div class="photo" id="lotPhotoWrap">
+            <img id="lotImg" alt="Photo du lot" />
+            <div class="fallback" id="lotFallback" style="display:none;">Aucune image</div>
+          </div>
+          <div class="heroText">
+            <div class="kicker"><span class="num" id="lotNum">1</span><span id="lotLabel">LOT</span></div>
+            <h1 class="title" id="lotTitle">🎁 À définir</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: DRAW -->
+      <div class="view" id="viewDraw">
+        <div class="drawWrap">
+          <div class="drawHeader">
+            <h2 id="drawTitle">Tirage – Lot 1</h2>
+            <div class="meta" id="drawMeta">Roulette</div>
+          </div>
+          <div class="stage">
+            <div class="rouletteFrame">
+              <div class="highlight"></div>
+              <div class="pointer"></div>
+              <ul id="list"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: WINNER -->
+      <div class="view" id="viewWinner">
+        <div class="hero">
+          <div class="photo" id="winPhotoWrap">
+            <img id="winImg" alt="Photo du lot gagné" />
+            <div class="fallback" id="winFallback" style="display:none;">Aucune image</div>
+          </div>
+          <div class="heroText">
+            <div class="kicker"><span class="num" id="winNum">1</span><span>GAGNANT</span></div>
+            <h1 class="title" id="winPrizeTitle">🎁 À définir</h1>
+            <div style="height:10px"></div>
+            <div class="winnerName" id="winName">—</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal import -->
+  <div class="modal" id="modal">
+    <div class="modalCard">
+      <h3 style="margin:0 0 8px;">Participants</h3>
+      <div class="muted" style="margin:0 0 10px;">
+        Colle les noms (1 par ligne) ou importe un CSV (1ère colonne).
+      </div>
+      <textarea id="namesArea" placeholder="Alice Dupont&#10;Mehdi B.&#10;Sofia Martin"></textarea>
+
+      <div class="modalRow">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input type="file" id="file" accept=".csv,text/csv" />
+          <span class="muted">CSV : une ligne = un participant</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="btnClose">Fermer</button>
+          <button class="btn primary" id="btnApply">Appliquer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <script>
+    // ====== CONFIG (mets tes photos ici) ======
+    // Soit chemins locaux: "images/lot1.jpg"
+    // Soit URLs: "https://..."
+    const PRIZES = [
+      { badge: "1", name: "Enceinte JBL", image: "images/lot1.jpg" },
+      { badge: "2", name: "Iphone 17",      image: "images/lot2.jpg" }
+    ];
+
+    // ====== STATE ======
+    let round = 0;          // 0..PRIZES.length-1
+    let names = [];         // participants restants
+    let spinning = false;
+
+    // ====== DOM ======
+    const countPill = document.getElementById("countPill");
+    const roundPill = document.getElementById("roundPill");
+
+    const btnSetup = document.getElementById("btnSetup");
+    const btnStart = document.getElementById("btnStart");
+    const btnNext  = document.getElementById("btnNext");
+    const btnReset = document.getElementById("btnReset");
+
+    const viewLot = document.getElementById("viewLot");
+    const viewDraw = document.getElementById("viewDraw");
+    const viewWinner = document.getElementById("viewWinner");
+
+    const lotNum = document.getElementById("lotNum");
+    const lotTitle = document.getElementById("lotTitle");
+    const lotImg = document.getElementById("lotImg");
+    const lotFallback = document.getElementById("lotFallback");
+
+    const drawTitle = document.getElementById("drawTitle");
+    const listEl = document.getElementById("list");
+
+    const winNum = document.getElementById("winNum");
+    const winPrizeTitle = document.getElementById("winPrizeTitle");
+    const winName = document.getElementById("winName");
+    const winImg = document.getElementById("winImg");
+    const winFallback = document.getElementById("winFallback");
+
+    const modal = document.getElementById("modal");
+    const namesArea = document.getElementById("namesArea");
+    const btnApply = document.getElementById("btnApply");
+    const btnClose = document.getElementById("btnClose");
+    const fileInput = document.getElementById("file");
+
+    // ====== VIEW CONTROL ======
+    function showView(which){
+      for (const v of [viewLot, viewDraw, viewWinner]) v.classList.remove("active");
+      which.classList.add("active");
+    }
+
+    // ====== UI UPDATES ======
+    function setImage(imgEl, fallbackEl, src){
+      if (!src){
+        imgEl.style.display = "none";
+        fallbackEl.style.display = "block";
+        return;
+      }
+      imgEl.onload = () => {
+        imgEl.style.display = "block";
+        fallbackEl.style.display = "none";
+      };
+      imgEl.onerror = () => {
+        imgEl.style.display = "none";
+        fallbackEl.style.display = "block";
+      };
+      imgEl.src = src;
+    }
+
+    function updatePrizeUI(){
+      const p = PRIZES[round];
+      roundPill.textContent = `Lot ${round+1} / ${PRIZES.length}`;
+
+      lotNum.textContent = p.badge;
+      lotTitle.textContent = p.name;
+      setImage(lotImg, lotFallback, p.image);
+
+      drawTitle.textContent = `Tirage – Lot ${round+1}`;
+
+      winNum.textContent = p.badge;
+      winPrizeTitle.textContent = p.name;
+      setImage(winImg, winFallback, p.image);
+
+      btnNext.disabled = true;
+      btnStart.disabled = (names.length === 0);
+    }
+
+    function updateCountUI(){
+      countPill.textContent = `${names.length} participant(s)`;
+      btnStart.disabled = (names.length === 0) || spinning;
+    }
+
+    // ====== NAMES IMPORT ======
+    function normalizeNames(text){
+      const lines = text
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(Boolean);
+
+      const parsed = lines.map(l => {
+        const parts = l.split(/[;,]/).map(x => x.trim()).filter(Boolean);
+        return (parts[0] || "").replace(/^"|"$/g, "").trim();
+      }).filter(Boolean);
+
+      return Array.from(new Set(parsed));
+    }
+
+    // ====== RANDOM PICK ======
+    function cryptoPick(arr){
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      const idx = buf[0] % arr.length;
+      return { value: arr[idx], idx };
+    }
+
+    // ====== ROULETTE BUILD & ANIM ======
+    function buildRouletteItems(winner){
+      const ITEM_HEIGHT = 82;
+      const total = 64;
+      const items = [];
+
+      for (let i=0; i<total-1; i++){
+        const { value } = cryptoPick(names);
+        items.push(value);
+      }
+      items.push(winner);
+
+      listEl.innerHTML = "";
+      for (const n of items){
+        const li = document.createElement("li");
+        li.className = "item";
+        li.textContent = n;
+        listEl.appendChild(li);
+      }
+
+      listEl.style.transform = "translateY(0px)";
+      return { ITEM_HEIGHT, stopIndex: items.length - 1 };
+    }
+
+    function fireConfetti(){
+      const end = Date.now() + 1200;
+      (function frame() {
+        confetti({
+          particleCount: 7,
+          spread: 75,
+          origin: { x: Math.random()*0.4 + 0.3, y: 0.45 }
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+    }
+
+    async function runDraw(){
+      if (spinning) return;
+      if (names.length === 0) return;
+
+      spinning = true;
+      btnStart.disabled = true;
+      btnNext.disabled = true;
+
+      // 1) Aller sur vue TIRAGE
+      showView(viewDraw);
+
+      // 2) Choisir gagnant
+      const pick = cryptoPick(names);
+      const winner = pick.value;
+
+      // 3) Construire roulette
+      const { ITEM_HEIGHT, stopIndex } = buildRouletteItems(winner);
+
+      // 4) Calcul position finale (gagnant au centre)
+      const frameHeight = 310;
+      const centerOffset = (frameHeight / 2) - (ITEM_HEIGHT / 2);
+      const finalY = -(stopIndex * ITEM_HEIGHT) + centerOffset;
+
+      const anim = listEl.animate(
+        [
+          { transform: "translateY(0px)" },
+          { transform: `translateY(${finalY}px)` }
+        ],
+        {
+          duration: 5200,
+          easing: "cubic-bezier(0.08, 0.9, 0.15, 1)",
+          fill: "forwards"
+        }
+      );
+
+      try { await anim.finished; } catch(e){}
+
+      // 5) Retirer gagnant, afficher vue gagnant
+      names = names.filter(n => n !== winner);
+      updateCountUI();
+
+      winName.textContent = winner;
+      fireConfetti();
+      showView(viewWinner);
+
+      // 6) Bouton prochain lot
+      spinning = false;
+      btnNext.disabled = (round >= PRIZES.length - 1);
+      btnStart.disabled = false;
+    }
+
+    function nextLot(){
+      if (round >= PRIZES.length - 1) return;
+      round++;
+      updatePrizeUI();
+      showView(viewLot);
+      updateCountUI();
+    }
+
+    function resetAll(){
+      round = 0;
+      spinning = false;
+      listEl.innerHTML = "";
+      winName.textContent = "—";
+      updatePrizeUI();
+      showView(viewLot);
+      updateCountUI();
+    }
+
+    // ====== EVENTS ======
+    btnSetup.addEventListener("click", () => {
+      namesArea.value = names.join("\n");
+      modal.classList.add("show");
+    });
+
+    btnClose.addEventListener("click", () => modal.classList.remove("show"));
+
+    btnApply.addEventListener("click", () => {
+      names = normalizeNames(namesArea.value);
+      modal.classList.remove("show");
+      updateCountUI();
+      updatePrizeUI();
+    });
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      namesArea.value = normalizeNames(text).join("\n");
+    });
+
+    btnStart.addEventListener("click", runDraw);
+    btnNext.addEventListener("click", nextLot);
+    btnReset.addEventListener("click", resetAll);
+
+    // Raccourcis : Espace = lancer, N = prochain lot, R = reset
+    window.addEventListener("keydown", (e) => {
+      if (e.key === " "){ e.preventDefault(); runDraw(); }
+      if (e.key.toLowerCase() === "n"){ nextLot(); }
+      if (e.key.toLowerCase() === "r"){ resetAll(); }
+    });
+
+    // init
+    updatePrizeUI();
+    updateCountUI();
+    showView(viewLot);
+  </script>
+</body>
+</html>
